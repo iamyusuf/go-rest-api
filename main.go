@@ -1,5 +1,9 @@
 package main
 
+import (
+	"log"
+)
+
 var (
 	GET    = "GET"
 	POST   = "POST"
@@ -8,6 +12,11 @@ var (
 )
 
 func main() {
-	server := NewAPIServer(":8081")
+	store, err := NewPostgresStore()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	server := NewAPIServer(":8081", store)
 	server.Run()
 }
