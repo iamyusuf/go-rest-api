@@ -18,7 +18,7 @@ func NewAPIServer(listenAddr string, store Storage) *APIServer {
 func (s *APIServer) Run() {
 	router := mux.NewRouter()
 	router.HandleFunc("/account", makeHTTPHandleFunc(s.handleAccount))
-	router.HandleFunc("/account/{id}", makeHTTPHandleFunc(s.handleGetAccount))
+	router.HandleFunc("/account/{id}", makeHTTPHandleFunc(s.handleGetAccountById))
 	log.Println("JSON Api server is running on port: ", s.listenAddr)
 	err := http.ListenAndServe(s.listenAddr, router)
 
@@ -29,10 +29,11 @@ func (s *APIServer) Run() {
 
 func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == GET {
-		return s.handleGetAccount(w, r)
+		return s.handleGetAccounts(w, r)
 	}
 
 	if r.Method == POST {
+		fmt.Println("POST REQUEST")
 		return s.handleCreateAccount(w, r)
 	}
 
@@ -43,7 +44,7 @@ func (s *APIServer) handleAccount(w http.ResponseWriter, r *http.Request) error 
 	return fmt.Errorf("method not allowed %s", r.Method)
 }
 
-func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) error {
+func (s *APIServer) handleGetAccountById(w http.ResponseWriter, r *http.Request) error {
 	//account := NewAccount("Ali", "Yousuf")
 	id := mux.Vars(r)["id"]
 	fmt.Println(id)
@@ -51,7 +52,27 @@ func (s *APIServer) handleGetAccount(w http.ResponseWriter, r *http.Request) err
 }
 
 func (s *APIServer) handleCreateAccount(w http.ResponseWriter, r *http.Request) error {
-	return nil
+	input := new(CreateAccountRequest)
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		return err
+	}
+
+	account := NewAccount(input.FirstName, input.LastName)
+
+	if err := s.store.CreateAccount(account); err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, account)
+}
+
+func (s *APIServer) handleGetAccounts(w http.ResponseWriter, r *http.Request) error {
+	accounts, err := s.store.GetAccounts()
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, accounts)
 }
 
 func (s *APIServer) handleDeleteAccount(w http.ResponseWriter, r *http.Request) error {
